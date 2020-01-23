@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<module id="editor">
+    <components>
+	    <!-- <class folder="../Assets/custom">
+        </class> -->
+        <class name="CodeEditor" >
+        </class>
+    </components>
+</module>
