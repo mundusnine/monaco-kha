@@ -20,7 +20,7 @@ class Main {
 		// Now get the `g2` graphics object so we can draw
 		final g2 = fb.g2;
 		// Start drawing, and clear the framebuffer to `petrol`
-		g2.begin(true, Color.fromBytes(0, 95, 106));
+		g2.begin();
 		haxe.ui.core.Screen.instance.renderTo(g2);
 		// Finish the drawing operations
 		g2.end();

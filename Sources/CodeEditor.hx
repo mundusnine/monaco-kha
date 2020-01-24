@@ -1,14 +1,23 @@
 package;
 #if js
+import haxe.ui.Toolkit;
 import haxe.ui.core.Component;
+import haxe.ui.core.InteractiveComponent;
+import haxe.ui.events.UIEvent;
+
 import js.html.DivElement;
 import js.Browser.document;
-import haxe.ui.Toolkit;
 
-class CodeEditor extends Component {
+import monaco.Monaco;
+import monaco.Editor;
+import monaco.Languages;
+import monaco.LanguageParser;
+import monaco.Require;
+
+class CodeEditor extends InteractiveComponent {
     
     private var element:DivElement = null;
-    private var editor:Editor;
+    private var editor:IStandaloneCodeEditor;
     private var code:String = "package;\n\n
     @:native('ace.Editor')\n
     extern class Editor {\n
@@ -18,28 +27,43 @@ class CodeEditor extends Component {
     }";
     public function new(){
         super();
-        
         element = document.createDivElement();
         element.id = "editor";
         element.style.cssText = "position:absolute;";
+        element.classList.add('code-editor');
         document.body.appendChild(element);
-        var ace = document.createScriptElement();
-        ace.src = "ace.js";
-        ace.type = "text/javascript";
-        ace.onload = done;
-        document.body.appendChild(ace);
+        var monaco = document.createScriptElement();
+        monaco.src = "vs/loader.js";
+        monaco.type = "text/javascript";
+        monaco.onload = function(){
+            Require.require(['vs/editor/editor.main'], done);
+        };
+        document.body.appendChild(monaco);
     }
     private function done(){
-        // for(f in Reflect.fields( Ace)){
-        //     trace(f);
-        // }
-        // trace(Ace);
-        editor = Ace.edit('editor');
-        editor.getSession().setValue(code);
-        // new Document(['Hello','World']);
-        editor.setTheme('monokai');
-        editor.setTheme('monokai');
-        // editor.getSession().setMode("haxe");
+        language = "haxe";
+        addLanguage(_language);
+        editor = Monaco.editor.create(element, {
+            renderLineHighlight: "none",
+            language: _language,
+            fontSize: 12
+        });
+        Monaco.editor.colorizeElement(element,{});
+        Monaco.editor.setTheme('vs-dark');
+        text = code;
+        element.onclick = function(e:Any){
+            trace("was clicked");
+            focus = true;
+        };
+
+        editor.getModel().onDidChangeContent(function(e) {
+            dispatch(new UIEvent(UIEvent.CHANGE));
+        });
+        editor.onDidChangeCursorPosition(function(e) {
+            dispatch(new UIEvent(UIEvent.CHANGE));
+        });
+        // invalidateComponent();
+
     }
     public override function ready() {
         super.ready();
@@ -47,7 +71,7 @@ class CodeEditor extends Component {
         // var instance = document.createScriptElement();
         // instance.innerText = "var editor = ace.edit('editor');\neditor.setTheme('src-min-noconflict/theme-monokai.js');\neditor.session.setMode('src-min-noconflict/mode-html.js');";
         // document.body.appendChild(instance);
-        element.style.display = null;
+        // element.style.display = null;
         Toolkit.callLater(function() { // something not quite right here, shouldnt need a 1 frame delay
             syncElementBounds();
         });
@@ -55,8 +79,6 @@ class CodeEditor extends Component {
     
     public override function onResized() {
         syncElementBounds();
-        if(editor != null)
-            editor.resize();
     }
     
     public override function onMoved() {
@@ -76,6 +98,93 @@ class CodeEditor extends Component {
         element.style.width = width + "px";
         element.style.height = height + "px";
     }
+
+    private var _text:String;
+    // public var text(get,set):String;
+    private override function get_text():String {
+        if (editor != null) {
+            return editor.getValue();
+        }
+        return _text;
+    }
+    private override function set_text(value:String):String {
+        super.set_text(value);
+        _text = value;
+        _text = StringTools.replace(_text, "\\n", "\n");
+        _text = StringTools.replace(_text, "\\t", "    ");
+        if (editor != null) {
+            editor.setValue(_text);
+        }
+        return value;
+    }
+
+    private var _language:String;
+    public var language(get, set):String;
+    private function get_language() {
+        return _language;
+    }
+    private function set_language(value:String):String {
+        _language = value;
+        if (editor != null) {
+            addLanguage(value);
+            Monaco.editor.setModelLanguage(editor.getModel(), _language);
+        }
+        return value;
+    }
     
+    private function addLanguage(id) {
+        if (hasLanguage(id) == false) {
+            var lang = LanguageParser.get(id);
+            if (lang != null) {
+                Monaco.languages.register( { id: id } );
+                Monaco.languages.setMonarchTokensProvider(id, lang);
+            }
+        }
+    }
+    public function hasLanguage(id:String):Bool {
+        for (l in Monaco.languages.getLanguages()) {
+            if (l.id == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public override function validateComponentLayout():Bool {
+        var b = super.validateComponentLayout();
+        if (this.width > 0 && this.height > 0 && editor != null) {
+            var usableSize = this.layout.usableSize;
+            editor.layout({
+               width: usableSize.width,
+               height: usableSize.height
+            });
+        }
+        return b;
+    }
+
+    private override function set_focus(value:Bool):Bool {
+        _focus = value;
+        if (editor != null && _focus == true) {
+            Toolkit.callLater(function() {
+                editor.focus();
+            });
+        }
+        return value;
+    }
+    
+    public var caretPosition(get, set):Position;
+    private function get_caretPosition():Position {
+        var modelPos = editor.getPosition();
+        return new Position(modelPos.lineNumber, modelPos.column);
+    }
+    private function set_caretPosition(value:Position):Position {
+        trace("was called");
+        editor.setPosition({
+            readonly: false,
+            lineNumber: value.lineNumber,
+            column: value.column
+        }); 
+        return value;
+    }
 }
 #end
