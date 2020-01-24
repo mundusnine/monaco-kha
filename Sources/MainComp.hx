@@ -10,6 +10,6 @@ class MainComp extends Box {
         super();
         percentWidth = 100;
         percentHeight = 100;
-        // this.addComponent(new CodeEditor());
+        this.test.addComponent(new CodeEditor());
     }
 }

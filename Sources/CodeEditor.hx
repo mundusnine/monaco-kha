@@ -46,11 +46,15 @@ class CodeEditor extends InteractiveComponent {
         editor = Monaco.editor.create(element, {
             renderLineHighlight: "none",
             language: _language,
+			automaticLayout : true,
+			wordWrap : true,
+			minimap : { enabled : false },
+			theme : "vs-dark",
             fontSize: 12
         });
-        Monaco.editor.colorizeElement(element,{});
-        Monaco.editor.setTheme('vs-dark');
         text = code;
+        editor.getModel().updateOptions({ insertSpaces:false, trimAutoWhitespace:true });
+        editor.addCommand(monaco.KeyCode.KEY_S | monaco.KeyMod.CtrlCmd, function() { clearSpaces(); onSave(); });
         element.onclick = function(e:Any){
             trace("was clicked");
             focus = true;
@@ -65,6 +69,15 @@ class CodeEditor extends InteractiveComponent {
         // invalidateComponent();
 
     }
+    function clearSpaces() {
+		var code = code;
+		var newCode = [for( l in StringTools.trim(code).split("\n") ) StringTools.rtrim(l)].join("\n");
+		if( newCode != code ) {
+			var p = editor.getPosition();
+			text = newCode;
+			editor.setPosition(p);
+		}
+	}
     public override function ready() {
         super.ready();
         // _el = Browser.document.getElementById(htmlId);
@@ -85,8 +98,8 @@ class CodeEditor extends InteractiveComponent {
         syncElementBounds();
     }
 
-    public var offsetX:Float = 0; // location of the canvas on the html page
-    public var offsetY:Float = 0;
+    public var offsetX:Float = 8; // location of the canvas on the html page
+    public var offsetY:Float = 8;
     private function syncElementBounds() {
         if (element == null) {
             trace("no element");
